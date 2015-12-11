@@ -246,14 +246,15 @@ int BrotliCompressBufferParallel(BrotliParams params,
   } else if (params.lgblock > kMaxInputBlockBits) {
     params.lgblock = kMaxInputBlockBits;
   }
-  size_t max_input_block_size = 1 << params.lgblock;
+  size_t max_input_block_size = std::min(static_cast<size_t>(1 << params.lgblock), input_size);
 
   std::vector<std::vector<uint8_t> > compressed_pieces;
 
   // Compress block-by-block independently.
   for (size_t pos = 0; pos < input_size; ) {
     size_t input_block_size = std::min(max_input_block_size, input_size - pos);
-    size_t out_size = 1.2 * input_block_size + 1024;
+    //size_t out_size = input_block_size + (input_block_size >> 3) + 1024;
+    size_t out_size = 1.2 * input_block_size + 1024;    
     std::vector<uint8_t> out(out_size);
     if (!WriteMetaBlockParallel(params,
                                 input_block_size,
@@ -273,7 +274,7 @@ int BrotliCompressBufferParallel(BrotliParams params,
 
   // Piece together the output.
   size_t out_pos = 0;
-  for (int i = 0; i < compressed_pieces.size(); ++i) {
+  for (size_t i = 0; i < compressed_pieces.size(); ++i) {
     const std::vector<uint8_t>& out = compressed_pieces[i];
     if (out_pos + out.size() > *encoded_size) {
       return false;
